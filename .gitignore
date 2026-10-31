@@ -1,0 +1,16 @@
+# ImmortalWrt source tree (cloned by scripts/build.sh)
+/source/
+
+# Build output
+/out/
+
+# Locally exported configs
+/configs/*.applied.config
+/configs/*.local.config
+
+# Logs / editor / OS noise
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

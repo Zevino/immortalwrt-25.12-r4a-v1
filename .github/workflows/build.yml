@@ -1,0 +1,98 @@
+name: Build ImmortalWrt 25.12 (R4A V1)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "ImmortalWrt branch"
+        required: false
+        default: "openwrt-25.12"
+      config:
+        description: "Seed config path"
+        required: false
+        default: "configs/r4a-v1.config"
+      extra_packages:
+        description: "Extra packages, space separated (e.g. luci-app-zerotier zerotier)"
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build firmware
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    env:
+      BRANCH: ${{ inputs.branch || 'openwrt-25.12' }}
+      CONFIG_FILE: ${{ inputs.config || 'configs/r4a-v1.config' }}
+      EXTRA_PACKAGES: ${{ inputs.extra_packages || '' }}
+      SOURCE_DIR: ${{ github.workspace }}/source
+      OUT_DIR: ${{ github.workspace }}/out
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.2
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
+      - name: Install build dependencies
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/install-deps.sh
+
+      - name: Prepare source and config
+        run: ./scripts/build.sh prepare
+
+      - name: Cache downloaded sources
+        uses: actions/cache@v4
+        with:
+          path: source/dl
+          key: iw-dl-${{ env.BRANCH }}-${{ hashFiles('configs/*.config') }}
+          restore-keys: |
+            iw-dl-${{ env.BRANCH }}-
+
+      - name: Download sources
+        run: ./scripts/build.sh download
+
+      - name: Compile
+        run: ./scripts/build.sh build
+
+      - name: Collect artifacts
+        if: always()
+        run: ./scripts/build.sh collect || true
+
+      - name: Show applied configuration
+        if: always()
+        run: |
+          echo "--- target ---"
+          grep -E '^CONFIG_TARGET_(ramips|ramips_mt7621|ramips_mt7621_DEVICE)' source/.config || true
+          echo "--- luci ---"
+          grep -E '^CONFIG_PACKAGE_luci(-app|-i18n)?' source/.config | head -40 || true
+
+      - name: Upload firmware
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: immortalwrt-25.12-r4a-v1-${{ github.run_number }}
+          path: out/
+          if-no-files-found: warn
+          retention-days: 30
