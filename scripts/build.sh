@@ -24,10 +24,12 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+abspath() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$PROJECT_DIR" "$1" ;; esac; }
+
 BRANCH="${BRANCH:-openwrt-25.12}"
-SOURCE_DIR="${SOURCE_DIR:-$PROJECT_DIR/source}"
-OUT_DIR="${OUT_DIR:-$PROJECT_DIR/out}"
-CONFIG_FILE="${CONFIG_FILE:-$PROJECT_DIR/configs/r4a-v1.config}"
+SOURCE_DIR="$(abspath "${SOURCE_DIR:-$PROJECT_DIR/source}")"
+OUT_DIR="$(abspath "${OUT_DIR:-$PROJECT_DIR/out}")"
+CONFIG_FILE="$(abspath "${CONFIG_FILE:-$PROJECT_DIR/configs/r4a-v1.config}")"
 REPO_URL="${REPO_URL:-https://github.com/immortalwrt/immortalwrt.git}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || echo 2)}"
 STAGE="${1:-all}"
